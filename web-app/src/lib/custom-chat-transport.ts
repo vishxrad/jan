@@ -19,6 +19,7 @@ import { useThreads } from '@/hooks/useThreads'
 import { useAttachments } from '@/hooks/useAttachments'
 import { useMCPServers } from '@/hooks/useMCPServers'
 import { useAppState } from '@/hooks/useAppState'
+import { useOpenUISettings } from '@/hooks/useOpenUISettings'
 import { invoke } from '@tauri-apps/api/core'
 import { ExtensionManager } from '@/lib/extension'
 import {
@@ -957,10 +958,21 @@ export class CustomChatTransport implements ChatTransport<UIMessage> {
       : this.systemMessage
     // Drop whitespace-only system prompts so we don't send a useless system
     // turn that some chat templates still wrap into special tokens.
-    const effectiveSystem =
+    let effectiveSystem =
       typeof rawSystem === 'string' && rawSystem.trim().length > 0
         ? rawSystem
         : undefined
+
+    const openUISettings = useOpenUISettings.getState()
+    if (openUISettings.enabled) {
+      const { getOpenUISystemPrompt } = await import('@/lib/openui')
+      const openUIPrompt = getOpenUISystemPrompt(
+        openUISettings.componentLibrary
+      )
+      effectiveSystem = effectiveSystem
+        ? `${effectiveSystem}\n\n${openUIPrompt}`
+        : openUIPrompt
+    }
 
     const maxOutputTokens: number | undefined = (() => {
       const raw = inferenceParams.max_output_tokens ?? inferenceParams.max_tokens

@@ -74,6 +74,10 @@ import {
   NEW_THREAD_ATTACHMENT_KEY,
   useChatAttachments,
 } from '@/hooks/useChatAttachments'
+import {
+  OPENUI_CHAT_ACTION_EVENT,
+  isOpenUIChatActionEvent,
+} from '@/lib/openui-actions'
 
 import {
   Attachment,
@@ -468,6 +472,11 @@ const ChatInput = memo(function ChatInput({
       // processing is complete.
     }
   }
+  const handleSendMessageRef = useRef(handleSendMessage)
+
+  useEffect(() => {
+    handleSendMessageRef.current = handleSendMessage
+  })
 
   useEffect(() => {
     const handleFocusIn = () => {
@@ -1540,6 +1549,24 @@ const ChatInput = memo(function ChatInput({
   }
 
   const isStreaming = chatStatus === 'submitted' || chatStatus === 'streaming'
+
+  useEffect(() => {
+    const handleOpenUIAction = (event: Event) => {
+      if (!isOpenUIChatActionEvent(event)) return
+
+      const nextPrompt = event.detail.prompt.trim()
+      if (!nextPrompt) return
+
+      event.preventDefault()
+      handleSendMessageRef.current(nextPrompt)
+    }
+
+    window.addEventListener(OPENUI_CHAT_ACTION_EVENT, handleOpenUIAction)
+
+    return () => {
+      window.removeEventListener(OPENUI_CHAT_ACTION_EVENT, handleOpenUIAction)
+    }
+  }, [])
 
   return (
     <div className="relative">
